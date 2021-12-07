@@ -177,7 +177,9 @@ def initialize_reactants_from_smiles(reactant_smiles):
         rdkit.Chem.rdchem.Mol: RDKit molecule
     '''
     # Initialize reactants
-    reactants = Chem.MolFromSmiles(reactant_smiles)
+    params = Chem.SmilesParserParams()
+    params.removeHs = False
+    reactants = Chem.MolFromSmiles(reactant_smiles, params)
     Chem.AssignStereochemistry(reactants, flagPossibleStereoCenters=True)
     reactants.UpdatePropertyCache(strict=False)
     # To have the product atoms match reactant atoms, we
