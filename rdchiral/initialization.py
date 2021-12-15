@@ -10,6 +10,50 @@ from rdchiral.bonds import enumerate_possible_cistrans_defs, bond_dirs_by_mapnum
 BondDirOpposite = {AllChem.BondDir.ENDUPRIGHT: AllChem.BondDir.ENDDOWNRIGHT,
                    AllChem.BondDir.ENDDOWNRIGHT: AllChem.BondDir.ENDUPRIGHT}
 
+def getDieneIndices(mol_product):
+    patt = '[*:1]/[C:3](\[*:2])=[C:4]/[C:5]=[C:6](\[*:7])/[*:8]'
+    qmol = Chem.MolFromSmarts(patt)
+    ind_map = {}
+    for atom in qmol.GetAtoms() :
+        map_num = atom.GetAtomMapNum()
+        if map_num:
+            ind_map[map_num-1] = atom.GetIdx()
+    
+    map_list = [ind_map[x] for x in sorted(ind_map)]
+    mas=[]
+    for match in mol_product.GetSubstructMatches( qmol , useChirality=True) :
+        mas = [match[x] for x in map_list]
+        
+    if len(mas) == 0:    
+        patt = '[*:1]/[C:3](\[*:2])=[C:4]/[C:5]=[C:6]'
+        qmol = Chem.MolFromSmarts(patt)
+        ind_map = {}
+        for atom in qmol.GetAtoms() :
+            map_num = atom.GetAtomMapNum()
+            if map_num:
+                ind_map[map_num-1] = atom.GetIdx()
+
+        map_list = [ind_map[x] for x in sorted(ind_map)]
+        mas=[]
+        for match in mol_product.GetSubstructMatches( qmol , useChirality=True) :
+            mas = [match[x] for x in map_list]
+
+    if len(mas) == 0:    
+        patt = '[C:3]=[C:4]/[C:5]=[C:6]'
+        qmol = Chem.MolFromSmarts(patt)
+        ind_map = {}
+        for atom in qmol.GetAtoms() :
+            map_num = atom.GetAtomMapNum()
+            if map_num:
+                ind_map[map_num-1] = atom.GetIdx()
+
+        map_list = [ind_map[x] for x in sorted(ind_map)]
+        mas=[]
+        for match in mol_product.GetSubstructMatches( qmol , useChirality=True) :
+            mas = [match[x] for x in map_list] 
+        
+    return mas
+
 class rdchiralReaction(object):
     '''Class to store everything that should be pre-computed for a reaction. This
     makes library application much faster, since we can pre-do a lot of work
@@ -176,6 +220,7 @@ def initialize_reactants_from_smiles(reactant_smiles):
     Returns:
         rdkit.Chem.rdchem.Mol: RDKit molecule
     '''
+    
     # Initialize reactants
     params = Chem.SmilesParserParams()
     params.removeHs = False
@@ -186,6 +231,29 @@ def initialize_reactants_from_smiles(reactant_smiles):
     # need to populate the map number field, since this field
     # gets copied over during the reaction via reactant_atom_idx.
     [a.SetAtomMapNum(i+1) for (i, a) in enumerate(reactants.GetAtoms())]
+
+    diene_map = getDieneIndices(reactants)
+
+    if len(diene_map) == 8:
+    #Z!#
+        if reactants.GetAtomWithIdx(diene_map[1]).GetAtomicNum() != 1:
+            reactants.GetAtomWithIdx(diene_map[1]).SetAtomMapNum(200)
+        if reactants.GetAtomWithIdx(diene_map[6]).GetAtomicNum() != 1:
+            reactants.GetAtomWithIdx(diene_map[6]).SetAtomMapNum(201)    
+    #E!#
+        if reactants.GetAtomWithIdx(diene_map[0]).GetAtomicNum() != 1:
+            reactants.GetAtomWithIdx(diene_map[0]).SetAtomMapNum(700)
+        if reactants.GetAtomWithIdx(diene_map[-1]).GetAtomicNum() != 1:
+           reactants.GetAtomWithIdx(diene_map[-1]).SetAtomMapNum(701) 
+
+    if len(diene_map) == 6:
+    #Z!#
+        if reactants.GetAtomWithIdx(diene_map[1]).GetAtomicNum() != 1:
+            reactants.GetAtomWithIdx(diene_map[1]).SetAtomMapNum(200)  
+    #E!#
+        if reactants.GetAtomWithIdx(diene_map[0]).GetAtomicNum() != 1:
+            reactants.GetAtomWithIdx(diene_map[0]).SetAtomMapNum(700)
+
     if PLEVEL >= 2: print('Initialized reactants, assigned map numbers, stereochem, flagpossiblestereocenters')
     return reactants
 
